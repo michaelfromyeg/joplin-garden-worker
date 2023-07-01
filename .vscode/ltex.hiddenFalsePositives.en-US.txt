@@ -1,0 +1,1 @@
+{"rule":"COLLECTIVE_NOUN_VERB_AGREEMENT_VBP","sentence":"^\\QBuild digital garden\nBuild a website of books\nUpdate the Markdown document inside a software project\\E$"}

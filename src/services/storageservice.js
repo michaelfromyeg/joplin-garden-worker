@@ -2,37 +2,35 @@ const YAML = require("yaml");
 const FileRepo = require("./filerepo");
 
 class StorageService {
-    static ApiToken = "apiToken";
+  static ApiToken = "apiToken";
 
-    static AuthToken = "authToken";
+  static AuthToken = "authToken";
 
-    static Filename = ".auth";
+  static Filename = ".auth";
 
-    constructor(fileRepo = new FileRepo()) {
-        this.fileRepo = fileRepo;
+  constructor(fileRepo = new FileRepo()) {
+    this.fileRepo = fileRepo;
+  }
+
+  load() {
+    try {
+      this.data = YAML.parse(this.fileRepo.loadFile(StorageService.Filename)) ?? {};
+    } catch (e) {
+      this.data = {};
     }
+  }
 
-    load() {
-        try {
-            this.data = YAML.parse(
-                this.fileRepo.loadFile(StorageService.Filename),
-            ) ?? {};
-        } catch (e) {
-            this.data = {};
-        }
-    }
+  save() {
+    this.fileRepo.writeFile(StorageService.Filename, YAML.stringify(this.data));
+  }
 
-    save() {
-        this.fileRepo.writeFile(StorageService.Filename, YAML.stringify(this.data));
-    }
+  get(key) {
+    return this.data[key];
+  }
 
-    get(key) {
-        return this.data[key];
-    }
-
-    set(key, value) {
-        this.data[key] = value;
-    }
+  set(key, value) {
+    this.data[key] = value;
+  }
 }
 
 module.exports = StorageService;

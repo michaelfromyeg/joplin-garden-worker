@@ -15,146 +15,147 @@ const linkService = new LinkService();
 const fileRepo = new FileRepo();
 
 async function auth() {
-    storageService.load();
-    await joplinDataService.load();
+  storageService.load();
+  await joplinDataService.load();
 
-    if (!joplinDataService.isAuthorized()) {
-        // eslint-disable-next-line
-        console.info("Please open Joplin to grant permission to access the data.");
-        await joplinDataService.requestPermission();
-        storageService.save();
-        // eslint-disable-next-line
-        console.info("Authorization successful.");
-    }
+  if (!joplinDataService.isAuthorized()) {
+    // eslint-disable-next-line
+    console.info("Please open Joplin to grant permission to access the data.");
+    await joplinDataService.requestPermission();
+    storageService.save();
+    // eslint-disable-next-line
+    console.info("Authorization successful.");
+  }
 }
 
 async function run(outputDir, exportNote) {
-    const configFile = "config.yaml";
-    let config;
-    try {
-        config = YAML.parse(fileRepo.loadFile(configFile));
-    } catch (e) {
-        // eslint-disable-next-line
-        console.error(`Error: ${configFile} not found.`);
-        process.exit(-1);
-        return;
-    }
-    const noteParserService = new NoteParserService(config);
-    const gardenService = new GardenService(config, outputDir, {
-        joplinDataService,
-        noteParserService,
-        linkService,
-    });
-
-    const engineService = new EngineService({
-        gardenService,
-        noteParserService,
-        linkService,
-        joplinDataService,
-    });
-
-    await auth();
-
-    gardenService.loadNoteMetadata();
-    const notes = [...await gardenService.loadNoteInfo()];
-
+  const configFile = "config.yaml";
+  let config;
+  try {
+    config = YAML.parse(fileRepo.loadFile(configFile));
+  } catch (e) {
     // eslint-disable-next-line
-    const Engine = require(`${__dirname}/engines/${gardenService.config.engine}`);
-    const engine = new Engine(engineService);
-    let exportedNote = 0;
-    let exportedResource = 0;
+    console.error(`Error: ${configFile} not found.`);
+    process.exit(-1);
+    return;
+  }
+  const noteParserService = new NoteParserService(config);
+  const gardenService = new GardenService(config, outputDir, {
+    joplinDataService,
+    noteParserService,
+    linkService,
+  });
 
-    await engine.prepare();
+  const engineService = new EngineService({
+    gardenService,
+    noteParserService,
+    linkService,
+    joplinDataService,
+  });
 
-    // Process note metadata
-    for (const note of notes) {
-        const response = await joplinDataService.getNote(note.id);
-        const { created_time, updated_time } = response;
-        const metadata = await engine.processNoteMetadata(
-            { ...note, created_time, updated_time },
-        );
+  await auth();
 
-        gardenService.setNoteMetadata(note.id, {
-            ...metadata,
-            id: note.id,
-            title: note.title,
-        });
-    }
+  gardenService.loadNoteMetadata();
+  const notes = [...(await gardenService.loadNoteInfo())];
 
-    // Process all noet meatdata. It could find something like backlinks between exported notes.
-    await engine.processAllMetadata();
+  // eslint-disable-next-line
+  const Engine = require(`${__dirname}/engines/${gardenService.config.engine}`);
+  const engine = new Engine(engineService);
+  let exportedNote = 0;
+  let exportedResource = 0;
 
-    // Process note body
-    for (const note of notes) {
-        const response = await joplinDataService.getNote(note.id);
+  await engine.prepare();
 
-        const { created_time, updated_time } = response;
+  // Process note metadata
+  for (const note of notes) {
+    const response = await joplinDataService.getNote(note.id);
+    const { created_time, updated_time } = response;
+    const metadata = await engine.processNoteMetadata({
+      ...note,
+      created_time,
+      updated_time,
+    });
 
-        const {
-            body, metadata,
-            originalBody,
-        } = await engine.processNoteBody(
-            { ...note, created_time, updated_time },
-            noteParserService.stripHtmlCommentIfEnabled(
-                response.body,
-                gardenService.getNoteMetadata(note.id),
-            ),
-        );
+    gardenService.setNoteMetadata(note.id, {
+      ...metadata,
+      id: note.id,
+      title: note.title,
+    });
+  }
 
-        gardenService.setNoteMetadata(note.id, metadata);
+  // Process all noet meatdata. It could find something like backlinks between exported notes.
+  await engine.processAllMetadata();
 
-        if (exportNote) {
-            await engine.exportNote({
-                body,
-                metadata,
-                originalBody,
-            });
-            exportedNote++;
-        }
-    }
+  // Process note body
+  for (const note of notes) {
+    const response = await joplinDataService.getNote(note.id);
+
+    const { created_time, updated_time } = response;
+
+    const { body, metadata, originalBody } = await engine.processNoteBody(
+      { ...note, created_time, updated_time },
+      noteParserService.stripHtmlCommentIfEnabled(
+        response.body,
+        gardenService.getNoteMetadata(note.id),
+      ),
+    );
+
+    gardenService.setNoteMetadata(note.id, metadata);
 
     if (exportNote) {
-        const resources = Array.from(
-            gardenService.resources,
-            ([_key, value]) => value,
-        );
-
-        await Promise.all(resources.map(async (resource) => {
-            const blob = await joplinDataService.queryResourceFile(resource.id);
-            return engine.exportResource(blob, resource);
-        }));
-        exportedResource += resources.length;
+      await engine.exportNote({
+        body,
+        metadata,
+        originalBody,
+      });
+      exportedNote++;
     }
+  }
 
-    gardenService.saveNoteMetadata();
+  if (exportNote) {
+    const resources = Array.from(
+      gardenService.resources,
+      ([_key, value]) => value,
+    );
 
-    // eslint-disable-next-line no-console
-    console.info(`${exportedNote} notes exported`);
-    // eslint-disable-next-line no-console
-    console.info(`${exportedResource} resources exported`);
+    await Promise.all(
+      resources.map(async (resource) => {
+        const blob = await joplinDataService.queryResourceFile(resource.id);
+        return engine.exportResource(blob, resource);
+      }),
+    );
+    exportedResource += resources.length;
+  }
+
+  gardenService.saveNoteMetadata();
+
+  // eslint-disable-next-line no-console
+  console.info(`${exportedNote} notes exported`);
+  // eslint-disable-next-line no-console
+  console.info(`${exportedResource} resources exported`);
 }
 
 program
-    .name("jgw")
-    .description("Joplin Garden Worker - Export Joplin notes to a static site")
-    .version("0.0.1");
+  .name("jgw")
+  .description("Joplin Garden Worker - Export Joplin notes to a static site")
+  .version("0.0.1");
 
 program
-    .command("auth")
-    .description("Ask Joplin to grant authorization")
-    .action(async () => {
-        await auth();
-    });
+  .command("auth")
+  .description("Ask Joplin to grant authorization")
+  .action(async () => {
+    await auth();
+  });
 
 program
-    .command("export")
-    .argument("<output_dir>", "output directory")
-    .description("Export the notes to the output directory")
-    .action(async (outputDir, options) => run(outputDir, true, options));
+  .command("export")
+  .argument("<output_dir>", "output directory")
+  .description("Export the notes to the output directory")
+  .action(async (outputDir, options) => run(outputDir, true, options));
 
 program
-    .command("update")
-    .description("Update metadata.yaml without exporting notes")
-    .action(async (options) => run("", false, options));
+  .command("update")
+  .description("Update metadata.yaml without exporting notes")
+  .action(async (options) => run("", false, options));
 
 program.parse();
