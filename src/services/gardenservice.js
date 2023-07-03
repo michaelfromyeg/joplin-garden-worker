@@ -70,9 +70,7 @@ class GardenService {
       garden?.notes.forEach((item) => {
         this.setNoteMetadata(item.id, item);
       });
-      this.storedGarden.notes = new Map(
-        JSON.parse(JSON.stringify([...this.garden.notes])),
-      );
+      this.storedGarden.notes = new Map(JSON.parse(JSON.stringify([...this.garden.notes])));
     } catch (e) {
       // ignore exception
     }
@@ -83,11 +81,7 @@ class GardenService {
 
     const includeTags = config.includeTags ?? [];
 
-    const notes = (
-      await Promise.all(
-        includeTags.map(async (tag) => joplinDataService.getNotesByTag(tag)),
-      )
-    ).flat();
+    const notes = (await Promise.all(includeTags.map(async (tag) => joplinDataService.getNotesByTag(tag)))).flat();
 
     this.joplin.notes = notes;
     this.joplin.notesIndex = new Map(notes.map((note) => [note.id, note]));
@@ -95,27 +89,21 @@ class GardenService {
   }
 
   saveNoteMetadata() {
-    const notes = Array.from(this.garden.notes.entries()).map(
-      ([_id, item]) => item,
-    );
+    const notes = Array.from(this.garden.notes.entries()).map(([_id, item]) => item);
     ShellString(
       YAML.stringify({
         notes,
-      }),
+      })
     ).to("metadata.yaml");
   }
 
   readFile(pathToken) {
-    const file = [this.outputDir]
-      .concat(pathToken.filter((p) => p !== undefined && p !== ""))
-      .join("/");
+    const file = [this.outputDir].concat(pathToken.filter((p) => p !== undefined && p !== "")).join("/");
     return this.fileRepo.loadFile(file);
   }
 
   saveFile(pathToken, content) {
-    const file = [this.outputDir]
-      .concat(pathToken.filter((p) => p !== undefined && p !== ""))
-      .join("/");
+    const file = [this.outputDir].concat(pathToken.filter((p) => p !== undefined && p !== "")).join("/");
 
     mkdir("-p", path.dirname(file));
     fs.writeFileSync(file, content);

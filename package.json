@@ -7,6 +7,8 @@
     "jgw": "./src/jgw.js"
   },
   "scripts": {
+    "jgw": "node ./src/jgw.js",
+    "build": "npm i -g && npm link",
     "test": "mocha tests/*.test.js",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
@@ -22,6 +24,7 @@
     "slug": "^8.2.2",
     "slugify": "^1.6.5",
     "strip-html-comments": "^1.0.0",
+    "toml": "^3.0.0",
     "yaml": "^2.1.2"
   },
   "devDependencies": {

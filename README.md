@@ -9,7 +9,7 @@ This tool support exporting to a GitHub Wiki or Hugo Static Site Generator.
 Demo sites:
 
 - Hugo: [Unlimited Build Works](https://benlau.github.io/)
-- GitHub Wiki: [benlau.github.io Wiki](https://github.com/benlau/benlau.github.io/wiki)
+- GitHub Wiki: [`benlau.github.io` Wiki](https://github.com/benlau/benlau.github.io/wiki)
 
 - [Joplin Garden Worker (Quartz Edition)](#joplin-garden-worker-quartz-edition)
   - [Features](#features)
@@ -33,7 +33,7 @@ Demo sites:
 
 - Exported tag filtered notes from Joplin
 - Export to Hugo / GitHub Wiki
-- Support link transclusion (...whatever that is)
+- Support link "transclusion" (...whatever that is)
 - Support running custom post-processing scripts
   - e.g., show backlinks on a note
 
@@ -104,6 +104,49 @@ $ jgw auth
 
 And then you should switch to Joplin. It will show a dialog to ask to grant permission for the request if you have web clipper enabled. ([Joplin Web Clipper | Joplin](https://joplinapp.org/clipper/)). Accept the request then it will write a `.auth` file to store the API. If you are holding the project inside a version control system like `git`. Please don't commit this file.
 
+### From within `WSL2`
+
+If you're running this code from within WSL2, you need to be a bit fancy to connect to the Joplin web service.
+
+Firstly, add the following bit to your `.bashrc.` Credit to [this](https://stackoverflow.com/questions/64763147/access-a-localhost-running-in-windows-from-inside-wsl2) Stack Overflow post for the tip.
+
+```sh
+export winhost=$(cat /etc/resolv.conf | grep nameserver | awk '{ print $2 }')
+if [ ! -n "$(grep -P "[[:space:]]winhost" /etc/hosts)" ]; then
+        printf "%s\t%s\n" "$winhost" "winhost" | sudo tee -a "/etc/hosts"
+fi
+```
+
+Now `winhost` is `localhost`.
+
+Once Joplin is running, you should be able to run the following command.
+
+```sh
+$ nmap -p 41184 winhost -Pn
+Starting Nmap 7.80 ( https://nmap.org ) at 2023-07-01 11:06 PDT
+Nmap scan report for winhost (172.28.48.1)
+Host is up.
+
+PORT      STATE    SERVICE
+41184/tcp filtered unknown
+
+Nmap done: 1 IP address (1 host up) scanned in 2.05 seconds
+```
+
+This is good, now we can connect. (That was a lie... it still didn't work.)
+
+Instead, try re-opening the folder from Windows. Trust the repository.
+
+Make sure `nvm` is installed on your Windows machine.
+
+Okay, actually my `nvm` was broken. Just run `choco install nodejs`.
+
+Run `npm i --global` from the base, and then `npm link`.
+
+Run `refreshenv` in PowerShell (or equivalent in other terminals).
+
+`jgw` should now be accessible!
+
 ## Export the site
 
 ```bash
@@ -121,6 +164,12 @@ hugo server -w
 ```
 
 Open this [URL](http://localhost:1313/blog) in your browser. It should show a website with notes exported from your Joplin inside the blog section.
+
+### With Quartz
+
+Here's where things will get a bit weird. Head to the Quartz content section and run `jgw export site`. Let's see what breaks.
+
+Switch over to the Quartz repository, which should also be based in Windows, if you followed the WSL section above.
 
 ## Advanced Usage
 
@@ -155,7 +204,7 @@ includeTags:
 - `hugoOptions`: Hugo specific options.
   - `outputAsFolder`: A option for Hugo only. By default, the garden worker generates a note in the format of `${folder}/${note-title}.md`. If `outputAsFolder` was set, it will become `${folder}/${note-title}/index.md`. It is designed to support Hugo theme that will show the featured image. The default value is true.
 - `defaultFolder`: The default output folder of a note.
-- `stripHtmlComments`: If it is true , HTML comment blocks are removed from the exported note.
+- `stripHtmlComments`: If it is true, HTML comment blocks are removed from the exported note.
 
 ## `metadata.yaml`
 
@@ -191,7 +240,7 @@ jgw update
 
 ### Exporting the site
 
-This command exports the notes to the target folder and it will also update the metadata.yaml
+This command exports the notes to the target folder, and it will also update the `metadata.yaml`.
 
 ```bash
 jgw export OUTPUT_FOLDER

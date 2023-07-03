@@ -40,7 +40,7 @@ class GithubWiki {
         originalBody,
         metadata,
       },
-      this,
+      this
     );
   }
 
@@ -50,8 +50,11 @@ class GithubWiki {
 
     let metadata = gardenService.getNoteMetadata(id);
 
-    const filename = metadata?.filename ?? this.genFilename(noteInfo);
-    const folder = metadata?.folder ?? this.defaultFolder;
+    let filename = metadata?.filename ?? this.genFilename(noteInfo);
+    filename = filename.toLowerCase();
+
+    let folder = metadata?.folder ?? this.defaultFolder;
+    folder = folder.toLowerCase();
 
     metadata = {
       link: this.genLink(noteInfo),
@@ -71,7 +74,7 @@ class GithubWiki {
   }
 
   // eslint-disable-next-line
-  async processAllMetadata() {}
+  async processAllMetadata() { }
 
   async processNoteBody(noteInfo, body) {
     const { gardenService, engineService } = this;
@@ -86,43 +89,31 @@ class GithubWiki {
 
     newBody = await engineService.transclude(newBody);
 
-    newBody = await gardenService.noteParserService.stripHtmlCommentIfEnabled(
-      newBody,
-      metadata,
-    );
+    newBody = await gardenService.noteParserService.stripHtmlCommentIfEnabled(newBody, metadata);
 
-    newBody = await engineService.removeBrokenNoteLinks(
-      newBody,
-      gardenService.getAllNoteInfo(),
-    );
+    newBody = await engineService.removeBrokenNoteLinks(newBody, gardenService.getAllNoteInfo());
 
-    newBody = await gardenService.noteParserService.updateLinks(
-      newBody,
-      async (link, linkId, title) => {
-        if (linkService.isResourceLink(link)) {
-          const resource = await gardenService.queryResourceInfo(linkId);
-          if (resource !== undefined && resource.error === undefined) {
-            const resourceLink = this.genResourceLink(resource);
-            return `[[${resourceLink}]]`;
-          }
+    newBody = await gardenService.noteParserService.updateLinks(newBody, async (link, linkId, title) => {
+      if (linkService.isResourceLink(link)) {
+        const resource = await gardenService.queryResourceInfo(linkId);
+        if (resource !== undefined && resource.error === undefined) {
+          const resourceLink = this.genResourceLink(resource);
+          return `[[${resourceLink}]]`;
         }
-        const target = gardenService.getNoteInfo(linkId);
-        if (target === undefined) {
-          return link;
-        }
+      }
+      const target = gardenService.getNoteInfo(linkId);
+      if (target === undefined) {
+        return link;
+      }
 
-        const normalizedTitle = linkService.replaceSpecialChar(title, "");
-        const newLink = `[${normalizedTitle}](${this.genLink(target)})`;
-        return newLink;
-      },
-    );
+      const normalizedTitle = linkService.replaceSpecialChar(title, "");
+      const newLink = `[${normalizedTitle}](${this.genLink(target)})`;
+      return newLink;
+    });
 
     try {
-      newBody = await gardenService.noteParserService.updateBlocks(
-        newBody,
-        /^```garden$/,
-        /^```$/,
-        async (block) => this.processGardenBlock(block, id, metadata),
+      newBody = await gardenService.noteParserService.updateBlocks(newBody, /^```garden$/, /^```$/, async (block) =>
+        this.processGardenBlock(block, id, metadata)
       );
     } catch (e) {
       // eslint-disable-next-line
@@ -130,7 +121,9 @@ class GithubWiki {
       throw e;
     }
 
-    const filename = metadata?.filename ?? this.genFilename(noteInfo);
+    // TODO(michaelfromyeg): note the add of `toLowerCase` to play nice with quartz
+    let filename = metadata?.filename ?? this.genFilename(noteInfo);
+    filename = filename.toLowerCase();
 
     const note = {
       info: noteInfo,

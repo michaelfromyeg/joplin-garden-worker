@@ -1,18 +1,16 @@
 #! /usr/bin/env node --harmony --experimental-fetch --experimental-modules --no-warnings
 const { program } = require("commander");
-const YAML = require("yaml");
 const JoplinDataService = require("./lib/joplinapi/joplindataservice");
 const StorageService = require("./services/storageservice");
 const GardenService = require("./services/gardenservice");
 const NoteParserService = require("./services/noteparserservice");
-const FileRepo = require("./services/filerepo");
 const LinkService = require("./services/linkservice");
 const EngineService = require("./services/engineservice");
+const HugoService = require("./services/hugoservice");
 
 const storageService = new StorageService();
 const joplinDataService = new JoplinDataService(storageService);
 const linkService = new LinkService();
-const fileRepo = new FileRepo();
 
 async function auth() {
   storageService.load();
@@ -29,16 +27,11 @@ async function auth() {
 }
 
 async function run(outputDir, exportNote) {
-  const configFile = "config.yaml";
-  let config;
-  try {
-    config = YAML.parse(fileRepo.loadFile(configFile));
-  } catch (e) {
-    // eslint-disable-next-line
-    console.error(`Error: ${configFile} not found.`);
+  const config = new HugoService().getConfig();
+  if (!config) {
     process.exit(-1);
-    return;
   }
+
   const noteParserService = new NoteParserService(config);
   const gardenService = new GardenService(config, outputDir, {
     joplinDataService,
@@ -94,10 +87,7 @@ async function run(outputDir, exportNote) {
 
     const { body, metadata, originalBody } = await engine.processNoteBody(
       { ...note, created_time, updated_time },
-      noteParserService.stripHtmlCommentIfEnabled(
-        response.body,
-        gardenService.getNoteMetadata(note.id),
-      ),
+      noteParserService.stripHtmlCommentIfEnabled(response.body, gardenService.getNoteMetadata(note.id))
     );
 
     gardenService.setNoteMetadata(note.id, metadata);
@@ -113,16 +103,13 @@ async function run(outputDir, exportNote) {
   }
 
   if (exportNote) {
-    const resources = Array.from(
-      gardenService.resources,
-      ([_key, value]) => value,
-    );
+    const resources = Array.from(gardenService.resources, ([_key, value]) => value);
 
     await Promise.all(
       resources.map(async (resource) => {
         const blob = await joplinDataService.queryResourceFile(resource.id);
         return engine.exportResource(blob, resource);
-      }),
+      })
     );
     exportedResource += resources.length;
   }
@@ -135,10 +122,7 @@ async function run(outputDir, exportNote) {
   console.info(`${exportedResource} resources exported`);
 }
 
-program
-  .name("jgw")
-  .description("Joplin Garden Worker - Export Joplin notes to a static site")
-  .version("0.0.1");
+program.name("jgw").description("Joplin Garden Worker - Export Joplin notes to a static site").version("0.0.1");
 
 program
   .command("auth")

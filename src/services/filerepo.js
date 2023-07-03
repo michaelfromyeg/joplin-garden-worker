@@ -1,6 +1,10 @@
 const fs = require("fs");
 
 class FileRepo {
+  exists(file) {
+    return fs.existsSync(file);
+  }
+
   loadFile(file) {
     return fs.readFileSync(file, { encoding: "utf8", flag: "r" });
   }

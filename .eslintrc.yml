@@ -10,8 +10,14 @@ globals:
 parserOptions:
   ecmaVersion: latest
 rules:
-  quotes: [2, "double"]
-  indent: ["error", 2]
+  # Let Prettier handle the formatting!
+  quotes: "off"
+  indent: "off"
+  max-len: "off"
+  generator-star-spacing: "off"
+  comma-dangle: "off"
+  function-paren-newline: "off"
+  implicit-arrow-linebreak: "off"
   no-restricted-syntax: ["off", "ForOfStatement"]
   no-await-in-loop: "off"
   class-methods-use-this: "off"
@@ -20,4 +26,3 @@ rules:
   no-unused-vars: ["error", { "argsIgnorePattern": "^_" }]
   no-param-reassign: "off"
   camelcase: "off"
-  max-len: ["error", { "code": 120 }]

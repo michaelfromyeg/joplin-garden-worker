@@ -59,7 +59,10 @@ class Hugo {
 
     const { folder, filename } = metadata;
 
-    const path = ["content", folder, filename];
+    // TODO(michaelfromyeg): respect option here to include "content" as base, or not
+    // const path = ["content", folder, filename];
+    const path = [folder, filename];
+
     const file = await gardenService.saveFile(path, body);
 
     await this.hooks?.postExportNote(
@@ -70,7 +73,7 @@ class Hugo {
         originalBody,
         metadata,
       },
-      this,
+      this
     );
   }
 
@@ -108,8 +111,12 @@ class Hugo {
     const { id } = info;
 
     let metadata = gardenService.getNoteMetadata(id);
-    const filename = metadata?.filename ?? this.genFilename(info);
-    const folder = metadata?.folder ?? this.defaultFolder;
+    let filename = metadata?.filename ?? this.genFilename(info);
+    filename = filename.toLowerCase();
+
+    let folder = metadata?.folder ?? this.defaultFolder;
+    folder = folder.toLowerCase();
+
     const savedHeaders = metadata?.headers ?? {};
     const backlinks = this.backlinks.get(id) ?? [];
 
@@ -161,11 +168,8 @@ class Hugo {
     newBody = await engineService.transclude(newBody);
 
     try {
-      newBody = await gardenService.noteParserService.updateBlocks(
-        newBody,
-        /^```garden$/,
-        /^```$/,
-        async (block) => this.processGardenBlock(block, id, metadata),
+      newBody = await gardenService.noteParserService.updateBlocks(newBody, /^```garden$/, /^```$/, async (block) =>
+        this.processGardenBlock(block, id, metadata)
       );
     } catch (e) {
       // eslint-disable-next-line
@@ -175,35 +179,27 @@ class Hugo {
 
     newBody = await engineService.removeBrokenNoteLinks(newBody);
 
-    newBody = await gardenService.noteParserService.updateLinks(
-      newBody,
-      async (link, linkId, title) => {
-        if (link[0] === "!") {
-          // a image/file link
-          const resource = await gardenService.queryResourceInfo(linkId);
-          if (resource !== undefined && resource.error === undefined) {
-            const resourceLink = this.genResourceLink(resource);
-            return `![${title}](${resourceLink})`;
-          }
+    newBody = await gardenService.noteParserService.updateLinks(newBody, async (link, linkId, title) => {
+      if (link[0] === "!") {
+        // a image/file link
+        const resource = await gardenService.queryResourceInfo(linkId);
+        if (resource !== undefined && resource.error === undefined) {
+          const resourceLink = this.genResourceLink(resource);
+          return `![${title}](${resourceLink})`;
         }
+      }
 
-        const target = gardenService.getNoteInfo(linkId);
-        const newLink = `[${title}]({{< ref "${this.genLink(target)}" >}})`;
-        return newLink;
-      },
-    );
+      const target = gardenService.getNoteInfo(linkId);
+      const newLink = `[${title}]({{< ref "${this.genLink(target)}" >}})`;
+      return newLink;
+    });
 
     /// Handle mermaid block
-    newBody = await gardenService.noteParserService.updateBlocks(
-      newBody,
-      /^```mermaid$/,
-      /^```$/,
-      async (block) => {
-        const lines = block.split("\n");
-        const content = lines.slice(1, lines.length - 1).join("\n");
-        return `{{< mermaid >}}\n${content}\n{{< /mermaid >}}`;
-      },
-    );
+    newBody = await gardenService.noteParserService.updateBlocks(newBody, /^```mermaid$/, /^```$/, async (block) => {
+      const lines = block.split("\n");
+      const content = lines.slice(1, lines.length - 1).join("\n");
+      return `{{< mermaid >}}\n${content}\n{{< /mermaid >}}`;
+    });
 
     note = {
       ...note,
@@ -216,9 +212,7 @@ class Hugo {
 
     const divider = "---";
 
-    const header = [divider, YAML.stringify(note.metadata.headers), divider]
-      .flat()
-      .join("\n");
+    const header = [divider, YAML.stringify(note.metadata.headers), divider].flat().join("\n");
 
     return {
       originalBody: note.originalBody,
@@ -245,9 +239,7 @@ class Hugo {
 
     const { gardenService } = this;
 
-    const link = gardenService.garden.notes.has(id)
-      ? gardenService.getNoteMetadata(id).link
-      : undefined;
+    const link = gardenService.garden.notes.has(id) ? gardenService.getNoteMetadata(id).link : undefined;
     if (link !== undefined) {
       return link;
     }

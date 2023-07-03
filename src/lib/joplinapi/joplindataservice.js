@@ -31,7 +31,10 @@ class JoplinDataService {
 
   constructor(storageService) {
     this.apiToken = undefined;
+
+    // TODO(michaelfromyeg): source from winhost, if wsl2 flag enabled
     this.apiUrl = "http://localhost:41184";
+
     this.authToken = undefined;
     this.storageService = storageService;
   }
@@ -293,12 +296,8 @@ class JoplinDataService {
     };
     travel(tree);
 
-    const storedNotebookId = await this.storageService.get(
-      JoplinDataService.SelectedNotebookId,
-    );
-    const selectedNotebookId = hasValue(storedNotebookId)
-      ? storedNotebookId
-      : [...sortedNotebooks].shift()?.id ?? "";
+    const storedNotebookId = await this.storageService.get(JoplinDataService.SelectedNotebookId);
+    const selectedNotebookId = hasValue(storedNotebookId) ? storedNotebookId : [...sortedNotebooks].shift()?.id ?? "";
 
     return {
       notebooks: sortedNotebooks,
@@ -316,9 +315,7 @@ class JoplinDataService {
     let items = [];
     while (hasMore) {
       // eslint-disable-next-line
-      const url = `${this.apiUrl}/search?token=${
-        this.apiToken
-      }&query=${encodeURIComponent(keyword)}&page=${page}`;
+      const url = `${this.apiUrl}/search?token=${this.apiToken}&query=${encodeURIComponent(keyword)}&page=${page}`;
 
       const response = await this.fetchData(url, {
         method: "GET",
@@ -338,7 +335,7 @@ class JoplinDataService {
     return items;
   }
 
-  async* query(callback) {
+  async *query(callback) {
     let hasMore = true;
     let page = 1;
 
